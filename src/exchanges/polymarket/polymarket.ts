@@ -27,6 +27,16 @@ import {
 
 const BASE_URL = 'https://gamma-api.polymarket.com';
 const CLOB_URL = 'https://clob.polymarket.com';
+const POLYMARKET_MARKETS_ENDPOINT = '/markets';
+
+/** Minimum end date = now + this many days (markets must end after this). */
+const MIN_END_DATE_DAYS = 1;
+const MILLISECONDS_PER_DAY = 86400000;
+const DEFAULT_MARKETS_PAGE_SIZE = 100;
+/** Default minimum volume (USD) for fetchMarkets – Gamma API volume_num_min. */
+const DEFAULT_VOLUME_NUM_MIN = 20_000_000;
+/** Default minimum liquidity (USD) for fetchMarkets – Gamma API liquidity_num_min. */
+const DEFAULT_LIQUIDITY_NUM_MIN = 2_000_000;
 
 interface PolymarketConfig extends ExchangeConfig {
   chainId?: number;
@@ -111,7 +121,27 @@ export class Polymarket extends Exchange {
 
   async fetchMarkets(params?: FetchMarketsParams): Promise<Market[]> {
     return this.withRetry(async () => {
-      const response = await fetch(`${CLOB_URL}/sampling-markets`, {
+      const limit = params?.limit ?? DEFAULT_MARKETS_PAGE_SIZE;
+      const minVolume =
+        (params?.minVolume as number | undefined) ?? DEFAULT_VOLUME_NUM_MIN;
+      const minLiquidity =
+        (params?.minLiquidity as number | undefined) ?? DEFAULT_LIQUIDITY_NUM_MIN;
+
+      const now = Date.now();
+      const minEndDateTimestamp = now + MIN_END_DATE_DAYS * MILLISECONDS_PER_DAY;
+      const minEndDate = new Date(minEndDateTimestamp).toISOString();
+
+      const url = new URL(`${BASE_URL}${POLYMARKET_MARKETS_ENDPOINT}`);
+      url.searchParams.set('limit', String(Math.min(limit, 200)));
+      url.searchParams.set('closed', 'false');
+      url.searchParams.set('end_date_min', minEndDate);
+      url.searchParams.set('volume_num_min', String(minVolume));
+      url.searchParams.set('liquidity_num_min', String(minLiquidity));
+
+      console.log("polymarket fetchMarkets url:")
+      console.log(url.toString());
+
+      const response = await fetch(url.toString(), {
         signal: AbortSignal.timeout(this.timeout),
       });
 
@@ -119,14 +149,10 @@ export class Polymarket extends Exchange {
         throw new NetworkError(`Failed to fetch markets: ${response.status}`);
       }
 
-      const result = (await response.json()) as { data?: unknown[] };
-      const marketsData = result.data ?? (Array.isArray(result) ? result : []);
+      const data = (await response.json()) as Array<Record<string, unknown>>;
+      let markets = data.map((m) => this.parseGammaMarket(m));
 
-      let markets = marketsData
-        .map((item) => this.parseSamplingMarket(item as Record<string, unknown>))
-        .filter((m): m is Market => m !== null);
-
-      if (params?.active || !params?.closed) {
+      if (params?.active !== false && params?.closed !== true) {
         markets = markets.filter((m) => this.isMarketOpen(m));
       }
 
@@ -319,44 +345,6 @@ export class Polymarket extends Exchange {
     }
 
     return identifier;
-  }
-
-  private parseSamplingMarket(data: Record<string, unknown>): Market | null {
-    const conditionId = data.condition_id as string | undefined;
-    if (!conditionId) return null;
-
-    const tokens = (data.tokens as Array<Record<string, unknown>>) ?? [];
-    const tokenIds: string[] = [];
-    const outcomes: string[] = [];
-    const prices: Record<string, number> = {};
-
-    for (const token of tokens) {
-      if (token.token_id) tokenIds.push(String(token.token_id));
-      if (token.outcome) outcomes.push(String(token.outcome));
-      if (token.outcome && token.price != null) {
-        prices[String(token.outcome)] = Number(token.price);
-      }
-    }
-
-    const tickSize = (data.minimum_tick_size as number) ?? 0.01;
-
-    return {
-      id: conditionId,
-      question: (data.question as string) ?? '',
-      outcomes: outcomes.length ? outcomes : ['Yes', 'No'],
-      closeTime: undefined,
-      volume: 0,
-      liquidity: 0,
-      prices,
-      tickSize,
-      description: (data.description as string) ?? '',
-      metadata: {
-        ...data,
-        clobTokenIds: tokenIds,
-        conditionId,
-        minimumTickSize: tickSize,
-      },
-    };
   }
 
   private parseClobMarket(data: Record<string, unknown>): Market | null {

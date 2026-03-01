@@ -206,9 +206,13 @@ export class Limitless extends Exchange {
       }
     }
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const hasBody = method !== 'GET' && method !== 'DELETE' && params != null;
+
+    const headers: Record<string, string> = {};
+
+    if (hasBody) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (this.sessionCookie) {
       headers.Cookie = `limitless_session=${this.sessionCookie}`;
@@ -219,7 +223,7 @@ export class Limitless extends Exchange {
       headers,
     };
 
-    if (method !== 'GET' && method !== 'DELETE' && params) {
+    if (hasBody) {
       fetchOptions.body = JSON.stringify(params);
     }
 
@@ -441,7 +445,16 @@ export class Limitless extends Exchange {
       const queryParams: Record<string, unknown> = {
         page: params?.offset ? Math.floor(params.offset / 25) + 1 : 1,
         limit: Math.min(params?.limit ?? 25, 25),
+        ...(params?.sortBy != null && { sortBy: params.sortBy }),
       };
+
+      const getUrl = new URL(`${this.host}/markets/active`);
+      for (const [key, value] of Object.entries(queryParams)) {
+        if (value !== undefined && value !== null) {
+          getUrl.searchParams.set(key, String(value));
+        }
+      }
+      console.log('GET', getUrl.toString());
 
       const response = await this.request<{ data?: RawMarket[] } | RawMarket[]>(
         'GET',

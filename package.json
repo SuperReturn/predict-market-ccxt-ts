@@ -1,5 +1,5 @@
 {
-  "name": "@alango/dr-manhattan",
+  "name": "@superreturn/ccxt",
   "packageManager": "pnpm@10.27.0",
   "version": "0.1.0",
   "description": "CCXT-style unified API for prediction markets",
@@ -62,6 +62,7 @@
     "@biomejs/biome": "^2.0.0",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.5.13",
+    "dotenv": "^16.6.1",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16"

@@ -97,6 +97,10 @@ export interface FetchMarketsParams {
   active?: boolean;
   /** Include closed markets */
   closed?: boolean;
+  /** Minimum trading volume (USD) – e.g. Polymarket Gamma API volume_num_min */
+  minVolume?: number;
+  /** Minimum liquidity (USD) – e.g. Polymarket Gamma API liquidity_num_min */
+  minLiquidity?: number;
   /** Additional exchange-specific filters */
   [key: string]: unknown;
 }
