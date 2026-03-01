@@ -1,5 +1,5 @@
 {
-  "name": "@alango/dr-manhattan",
+  "name": "@superreturn/ccxt",
   "packageManager": "pnpm@10.27.0",
   "version": "0.1.0",
   "description": "CCXT-style unified API for prediction markets",
