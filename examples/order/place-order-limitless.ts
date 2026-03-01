@@ -19,13 +19,13 @@ async function main() {
   });
 
   // Replace with a real market slug from https://limitless.exchange
-  const marketId = 'dollareth-above-dollar196287-on-mar-1-0200-utc-1772326802268'; // market slug
-  const outcome = 'No';
+  const marketId = 'dollarsol-above-dollar88784-on-mar-1-0300-utc-1772330646040'; // market slug
+  const outcome = 'Yes';
   const side = OrderSide.BUY;
-  const price = 0.88; // must be between 0 and 1
+  const price = 0.1; // must be between 0 and 1
   const size = 2; // number of shares
 
-  console.log('Placing order:', { marketId, outcome, side, price, size });
+//   console.log('Placing order:', { marketId, outcome, side, price, size });
 
   try {
     const order = await limitless.createOrder({
@@ -36,6 +36,12 @@ async function main() {
       size,
     });
     console.log('Order placed:', order);
+
+    // fetch open orders
+    const orders = await limitless.fetchOpenOrders(marketId);
+    console.log("open orders amount:", orders.length);
+    console.log("open orders:")
+    console.log(orders);
   } catch (err) {
     console.error('Failed to place order:', err);
     process.exit(1);

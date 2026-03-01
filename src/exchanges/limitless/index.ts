@@ -206,9 +206,13 @@ export class Limitless extends Exchange {
       }
     }
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+    const hasBody = method !== 'GET' && method !== 'DELETE' && params != null;
+
+    const headers: Record<string, string> = {};
+
+    if (hasBody) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (this.sessionCookie) {
       headers.Cookie = `limitless_session=${this.sessionCookie}`;
@@ -219,7 +223,7 @@ export class Limitless extends Exchange {
       headers,
     };
 
-    if (method !== 'GET' && method !== 'DELETE' && params) {
+    if (hasBody) {
       fetchOptions.body = JSON.stringify(params);
     }
 

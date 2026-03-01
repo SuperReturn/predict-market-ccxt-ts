@@ -25,7 +25,7 @@ async function main() {
     '107505882767731489358349912513945399560393482969656700824895970500493757150417'; // clobTokenIds[Yes]
   const outcome = 'Yes';
   const side = OrderSide.BUY;
-  const price = 0.2;
+  const price = 0.01;
   const size = 5; // should >= orderMinSize in api response
   // price * size should >= 1
 
@@ -41,6 +41,13 @@ async function main() {
       tokenId,
     });
     console.log('Order placed:', order);
+    console.log('Order ID:', order.id);
+
+    // fetch open orders
+    const orders = await polymarket.fetchOpenOrders(marketId);
+    console.log("open orders amount:", orders.length);
+    console.log("open orders:")
+    console.log(orders);
   } catch (err) {
     console.error('Failed to place order:', err);
     process.exit(1);
