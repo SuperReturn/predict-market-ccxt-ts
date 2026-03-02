@@ -1,8 +1,6 @@
-# dr-manhattan
+# superReturn CCXT
 
 CCXT-style unified API for prediction markets in TypeScript.
-
-> TypeScript port of [guzus/dr-manhattan](https://github.com/guzus/dr-manhattan) (Python)
 
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org)
@@ -14,409 +12,15 @@ CCXT-style unified API for prediction markets in TypeScript.
 |----------|------|-----------|-------|
 | [Polymarket](https://polymarket.com) | ✅ | ✅ | Polygon |
 | [Limitless](https://limitless.exchange) | ✅ | ✅ | Base |
-| [Opinion](https://opinion.trade) | ✅ | ❌ | BNB |
-| [Kalshi](https://kalshi.com) | ✅ | ❌ | - |
-| [Predict.fun](https://predict.fun) | ✅ | ❌ | BNB |
 
 ## Installation
 
 ```bash
-npm install @alango/dr-manhattan
+npm install @superreturn/ccxt
 # or
-pnpm add @alango/dr-manhattan
+pnpm add @superreturn/ccxt
 # or
-yarn add @alango/dr-manhattan
-```
-
-## Quick Start
-
-```typescript
-import { createExchange, listExchanges, MarketUtils } from '@alango/dr-manhattan';
-
-// List available exchanges
-console.log(listExchanges()); // ['polymarket', 'limitless', 'opinion', 'kalshi', 'predictfun']
-
-// Create exchange instance (no auth required for public data)
-const polymarket = createExchange('polymarket');
-
-// Fetch markets
-const markets = await polymarket.fetchMarkets({ limit: 10 });
-
-for (const market of markets) {
-  console.log(`${market.question}`);
-  console.log(`  Volume: $${market.volume.toLocaleString()}`);
-  console.log(`  Binary: ${MarketUtils.isBinary(market)}`);
-  console.log(`  Spread: ${MarketUtils.spread(market)?.toFixed(4)}`);
-}
-```
-
-## Authentication
-
-### Polymarket
-
-```typescript
-import { Polymarket } from '@alango/dr-manhattan';
-
-const polymarket = new Polymarket({
-  privateKey: process.env.PRIVATE_KEY,
-  funder: process.env.FUNDER_ADDRESS, // optional
-  chainId: 137, // Polygon (default)
-});
-
-// Create order
-const order = await polymarket.createOrder({
-  marketId: 'market-condition-id',
-  outcome: 'Yes',
-  side: OrderSide.BUY,
-  price: 0.65,
-  size: 100,
-  tokenId: 'outcome-token-id',
-});
-
-// Fetch balance
-const balance = await polymarket.fetchBalance();
-console.log(`USDC: ${balance.USDC}`);
-```
-
-### Limitless
-
-```typescript
-import { Limitless } from '@alango/dr-manhattan';
-
-const limitless = new Limitless({
-  privateKey: process.env.PRIVATE_KEY,
-});
-
-// Authentication happens automatically via EIP-191/EIP-712 signing
-const positions = await limitless.fetchPositions();
-```
-
-### Opinion
-
-```typescript
-import { Opinion } from '@alango/dr-manhattan';
-
-const opinion = new Opinion({
-  apiKey: process.env.OPINION_API_KEY,
-  privateKey: process.env.PRIVATE_KEY,
-  multiSigAddr: process.env.MULTI_SIG_ADDR,
-});
-```
-
-### Kalshi
-
-```typescript
-import { Kalshi } from '@alango/dr-manhattan';
-
-// With RSA private key file
-const kalshi = new Kalshi({
-  apiKeyId: process.env.KALSHI_API_KEY_ID,
-  privateKeyPath: '/path/to/kalshi_private_key.pem',
-});
-
-// Or with PEM content directly
-const kalshi = new Kalshi({
-  apiKeyId: process.env.KALSHI_API_KEY_ID,
-  privateKeyPem: process.env.KALSHI_PRIVATE_KEY_PEM,
-});
-
-// Demo environment
-const kalshiDemo = new Kalshi({
-  apiKeyId: process.env.KALSHI_API_KEY_ID,
-  privateKeyPath: '/path/to/private_key.pem',
-  demo: true,
-});
-
-// Fetch markets (no auth required)
-const markets = await kalshi.fetchMarkets({ limit: 10 });
-
-// Create order (auth required)
-const order = await kalshi.createOrder({
-  marketId: 'INXD-24DEC31-B5000',
-  outcome: 'Yes',
-  side: OrderSide.BUY,
-  price: 0.55,
-  size: 10,
-});
-```
-
-### Predict.fun
-
-```typescript
-import { PredictFun } from '@alango/dr-manhattan';
-
-// Mainnet
-const predictfun = new PredictFun({
-  apiKey: process.env.PREDICTFUN_API_KEY,
-  privateKey: process.env.PRIVATE_KEY,
-});
-
-// Testnet
-const predictfunTestnet = new PredictFun({
-  apiKey: process.env.PREDICTFUN_API_KEY,
-  privateKey: process.env.PRIVATE_KEY,
-  testnet: true,
-});
-
-// Fetch markets (no auth required for public data)
-const markets = await predictfun.fetchMarkets({ limit: 10 });
-
-// Get orderbook
-const orderbook = await predictfun.getOrderbook(marketId);
-
-// Create order (auth required)
-const order = await predictfun.createOrder({
-  marketId: '123',
-  outcome: 'Yes',
-  side: OrderSide.BUY,
-  price: 0.55,
-  size: 100,
-});
-
-// Fetch positions
-const positions = await predictfun.fetchPositions();
-
-// Fetch balance
-const balance = await predictfun.fetchBalance();
-console.log(`USDT: ${balance.USDT}`);
-```
-
-## API Reference
-
-### Exchange Methods
-
-All exchanges implement these core methods:
-
-```typescript
-interface Exchange {
-  // Market data
-  fetchMarkets(params?: FetchMarketsParams): Promise<Market[]>;
-  fetchMarket(marketId: string): Promise<Market>;
-
-  // Orders (requires auth)
-  createOrder(params: CreateOrderParams): Promise<Order>;
-  cancelOrder(orderId: string, marketId?: string): Promise<Order>;
-  fetchOrder(orderId: string, marketId?: string): Promise<Order>;
-  fetchOpenOrders(marketId?: string): Promise<Order[]>;
-
-  // Account (requires auth)
-  fetchPositions(marketId?: string): Promise<Position[]>;
-  fetchBalance(): Promise<Record<string, number>>;
-
-  // Utilities
-  describe(): { id: string; name: string; has: ExchangeCapabilities };
-  findTradeableMarket(options?: { binary?: boolean; minLiquidity?: number }): Promise<Market | null>;
-  calculateSpread(market: Market): number | null;
-}
-```
-
-### Polymarket-specific Methods
-
-```typescript
-// Search markets by keyword
-const markets = await polymarket.searchMarkets('bitcoin');
-
-// Fetch by slug
-const market = await polymarket.fetchMarketsBySlug('bitcoin-100k');
-
-// Get orderbook
-const orderbook = await polymarket.getOrderbook(tokenId);
-
-// Fetch price history
-const history = await polymarket.fetchPriceHistory(tokenId, '1d');
-
-// Fetch public trades
-const trades = await polymarket.fetchPublicTrades(tokenId, { limit: 50 });
-
-// Find crypto hourly markets
-const hourlyMarket = await polymarket.findCryptoHourlyMarket('BTC', 'higher');
-```
-
-### WebSocket Streaming
-
-#### Polymarket WebSocket
-
-```typescript
-import { PolymarketWebSocket, OrderbookUtils } from '@alango/dr-manhattan';
-
-const ws = new PolymarketWebSocket();
-
-ws.on('open', () => {
-  ws.subscribeToOrderbook([tokenId1, tokenId2]);
-});
-
-ws.on('orderbook', ({ tokenId, orderbook }) => {
-  const bid = OrderbookUtils.bestBid(orderbook);
-  const ask = OrderbookUtils.bestAsk(orderbook);
-  console.log(`[${tokenId}] Bid: ${bid} | Ask: ${ask}`);
-});
-
-ws.on('error', (err) => console.error(err));
-ws.on('close', () => console.log('Disconnected'));
-
-await ws.connect();
-
-// Cleanup
-await ws.disconnect();
-```
-
-#### Limitless WebSocket
-
-```typescript
-import { LimitlessWebSocket } from '@alango/dr-manhattan';
-
-const ws = new LimitlessWebSocket();
-
-ws.on('orderbook', ({ marketAddress, orderbook }) => {
-  console.log(`[${marketAddress}] Updated`);
-});
-
-ws.on('price', ({ marketAddress, prices }) => {
-  console.log(`Prices:`, prices);
-});
-
-await ws.connect();
-ws.subscribeToMarket(marketAddress);
-```
-
-## Utilities
-
-### Market Utilities
-
-```typescript
-import { MarketUtils } from '@alango/dr-manhattan';
-
-MarketUtils.isBinary(market);      // Has exactly 2 outcomes
-MarketUtils.isOpen(market);        // Not closed, not resolved
-MarketUtils.spread(market);        // Price spread between outcomes
-MarketUtils.getTokenIds(market);   // Extract token IDs
-```
-
-### Orderbook Utilities
-
-```typescript
-import { OrderbookUtils } from '@alango/dr-manhattan';
-
-OrderbookUtils.bestBid(orderbook);     // Highest bid price
-OrderbookUtils.bestAsk(orderbook);     // Lowest ask price
-OrderbookUtils.spread(orderbook);      // Ask - Bid
-OrderbookUtils.midPrice(orderbook);    // (Bid + Ask) / 2
-OrderbookUtils.totalVolume(orderbook, 'bids'); // Sum of bid sizes
-```
-
-### Position Utilities
-
-```typescript
-import { PositionUtils, calculateDelta } from '@alango/dr-manhattan';
-
-PositionUtils.totalValue(positions);
-PositionUtils.totalPnl(positions);
-PositionUtils.filterByMarket(positions, marketId);
-
-// Calculate position delta
-const delta = calculateDelta(positions, market);
-// { yes: 100, no: -50, net: 50 }
-```
-
-### Price Utilities
-
-```typescript
-import { roundToTickSize, clampPrice, formatPrice, formatUsd } from '@alango/dr-manhattan';
-
-roundToTickSize(0.6543, 0.01);  // 0.65
-clampPrice(1.5);                 // 1.0
-formatPrice(0.6543);             // "0.654"
-formatUsd(1234567);              // "$1,234,567"
-```
-
-## Error Handling
-
-```typescript
-import {
-  DrManhattanError,
-  ExchangeError,
-  NetworkError,
-  RateLimitError,
-  AuthenticationError,
-  InsufficientFunds,
-  InvalidOrder,
-  MarketNotFound,
-} from '@alango/dr-manhattan';
-
-try {
-  await exchange.createOrder(params);
-} catch (error) {
-  if (error instanceof RateLimitError) {
-    console.log(`Rate limited, retry after ${error.retryAfter}ms`);
-  } else if (error instanceof InsufficientFunds) {
-    console.log('Not enough balance');
-  } else if (error instanceof InvalidOrder) {
-    console.log('Invalid order parameters');
-  }
-}
-```
-
-## Types
-
-```typescript
-import type {
-  Market,
-  OutcomeToken,
-  Order,
-  CreateOrderParams,
-  Position,
-  DeltaInfo,
-  Orderbook,
-  PriceLevel,
-  FetchMarketsParams,
-  ExchangeConfig,
-  ExchangeCapabilities,
-} from '@alango/dr-manhattan';
-
-import { OrderSide, OrderStatus } from '@alango/dr-manhattan';
-```
-
-## Adding New Exchanges
-
-```typescript
-import { Exchange, type ExchangeConfig } from '@alango/dr-manhattan';
-
-class NewExchange extends Exchange {
-  readonly id = 'newexchange';
-  readonly name = 'New Exchange';
-
-  async fetchMarkets(params?: FetchMarketsParams): Promise<Market[]> {
-    // Implement API call
-  }
-
-  async fetchMarket(marketId: string): Promise<Market> {
-    // Implement
-  }
-
-  // ... implement other abstract methods
-}
-```
-
-## Configuration Options
-
-```typescript
-interface ExchangeConfig {
-  // Authentication
-  apiKey?: string;
-  apiSecret?: string;
-  privateKey?: string;
-  funder?: string;
-
-  // Request settings
-  timeout?: number;      // Request timeout in ms (default: 30000)
-  rateLimit?: number;    // Max requests per second (default: 10)
-  maxRetries?: number;   // Retry count for failed requests (default: 3)
-  retryDelay?: number;   // Initial retry delay in ms (default: 1000)
-  retryBackoff?: number; // Backoff multiplier (default: 2)
-
-  // Debug
-  verbose?: boolean;     // Log debug info (default: false)
-}
+yarn add @superreturn/ccxt
 ```
 
 ## Examples
@@ -431,45 +35,159 @@ See the [examples/](examples/) directory:
 | **spike-strategy.ts** | Mean reversion strategy - buys price spikes | All |
 | **weather-bot-strategy.ts** | London temperature bucket mispricing strategy | Polymarket |
 
-### Running Examples
+### Order Examples
 
-```bash
-# List markets from all exchanges
-npx tsx examples/list-markets.ts
+#### Poly
 
-# WebSocket orderbook streaming (Polymarket)
-npx tsx examples/websocket-orderbook.ts
+Refer to [`examples/order/place-order-poly.ts`](examples/order/place-order-poly.ts) and [`examples/order/cancel-order-poly.ts`](examples/order/cancel-order-poly.ts)
 
-# Spread strategy - works with any exchange
-# Polymarket (WebSocket)
-EXCHANGE=polymarket PRIVATE_KEY=0x... npx tsx examples/spread-strategy.ts
+**Place GTC Order**
 
-# Limitless (WebSocket)
-EXCHANGE=limitless PRIVATE_KEY=0x... npx tsx examples/spread-strategy.ts
+Response when open:
+```
+{
+  id: '0xbb1e9d1ad6d2a4f0bc72e9a5eeab4abed819747c16fa0ba2d70741984655f7db',
+  marketId: '0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75',
+  outcome: 'Yes',
+  side: 'buy',
+  price: 0.1,
+  size: 10,
+  filled: 0,
+  status: 'open',
+  orderType: 'GTC',
+  createdAt: 2026-03-02T08:07:36.177Z,
+  updatedAt: 2026-03-02T08:07:36.177Z
+}
+```
 
-# Kalshi (REST polling)
-EXCHANGE=kalshi KALSHI_API_KEY_ID=... KALSHI_PRIVATE_KEY_PATH=./key.pem npx tsx examples/spread-strategy.ts
+Response when filled:
+```
+{
+  id: '0x5606e16247864621b9a8e45c223fce193f57654a5ca50979bf7662582a2127c1',
+  marketId: '0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75',
+  outcome: 'Yes',
+  side: 'buy',
+  price: 0.2,
+  size: 2,
+  filled: 2,
+  status: 'filled',
+  orderType: 'GTC',
+  createdAt: 2026-03-02T08:09:13.029Z,
+  updatedAt: 2026-03-02T08:09:13.029Z
+}
+```
 
-# Predict.fun (REST polling)
-EXCHANGE=predictfun PREDICTFUN_API_KEY=... PRIVATE_KEY=0x... npx tsx examples/spread-strategy.ts
+**Cancel GTC Order**
+```
+{
+  id: '0xbb1e9d1ad6d2a4f0bc72e9a5eeab4abed819747c16fa0ba2d70741984655f7db',
+  marketId: '0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75',
+  outcome: '',
+  side: 'buy',
+  price: 0,
+  size: 0,
+  filled: 0,
+  status: 'cancelled',
+  orderType: '',
+  createdAt: 2026-03-02T08:09:49.798Z,
+  updatedAt: 2026-03-02T08:09:49.798Z
+}
+```
 
-# Opinion (REST polling)
-EXCHANGE=opinion OPINION_API_KEY=... PRIVATE_KEY=0x... npx tsx examples/spread-strategy.ts
+**Place FOK Order**
 
-# Simulation mode (no credentials = no real trades)
-EXCHANGE=polymarket npx tsx examples/spread-strategy.ts
+Response when filled:
+```
+{
+  id: '0x90acd7e01e62204f205656a9eacc577f1a1679526b2db19917fa9e27b9e749c6',
+  marketId: '0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75',
+  outcome: 'Yes',
+  side: 'buy',
+  price: 0.2,
+  size: 1,
+  filled: 5,
+  status: 'filled',
+  orderType: 'FOK',
+  createdAt: 2026-03-02T08:12:41.172Z,
+  updatedAt: 2026-03-02T08:12:41.172Z
+}
+```
 
-# Spike strategy - mean reversion (buys dips)
-EXCHANGE=polymarket PRIVATE_KEY=0x... npx tsx examples/spike-strategy.ts
+If canceled: returns 400 error
 
-# Spike strategy with custom parameters
-npx tsx examples/spike-strategy.ts --spike-threshold 0.02 --profit-target 0.03 --stop-loss 0.02
+#### Limitless
 
-# Weather bot strategy - London temperature bucket mispricing
-npx tsx examples/weather-bot-strategy.ts --dry-run
+Refer to [`examples/order/place-order-limitless.ts`](examples/order/place-order-limitless.ts) and [`examples/order/cancel-order-limitless.ts`](examples/order/cancel-order-limitless.ts)
 
-# Weather bot with live trading
-PRIVATE_KEY=0x... npx tsx examples/weather-bot-strategy.ts --order-size 5
+**Place GTC Order**
+
+Response when open:
+```
+{
+  id: 'e01350c8-35f6-4059-a0da-521ac0a2c2f6',
+  marketId: 'dollarxrp-above-dollar13537-on-mar-2-1000-utc-1772442002314',
+  outcome: 'Yes',
+  side: 'buy',
+  price: 0.1,
+  size: 2,
+  filled: 0,
+  status: 'open',
+  orderType: 'GTC',
+  createdAt: 2026-03-02T09:22:00.717Z
+}
+```
+
+Response when filled: 
+```
+{
+  id: '8e98bae1-73a1-4e1f-9922-333059bf14fe',
+  marketId: 'dollartrx-above-dollar028121-on-mar-3-0800-utc-1772438402355',
+  outcome: 'No',
+  side: 'buy',
+  price: 0.3,
+  size: 1,
+  filled: 1,
+  status: 'filled',
+  orderType: 'GTC',
+  createdAt: 2026-03-02T16:32:40.070Z
+}
+```
+
+**Cancel GTC Order**
+
+```
+{
+  id: 'e01350c8-35f6-4059-a0da-521ac0a2c2f6',
+  marketId: 'dollarxrp-above-dollar13537-on-mar-2-1000-utc-1772442002314',
+  outcome: '',
+  side: 'buy',
+  price: 0,
+  size: 0,
+  filled: 0,
+  status: 'cancelled',
+  orderType: '',
+  createdAt: 2026-03-02T09:23:29.547Z
+}
+```
+
+**Place FOK Order**
+
+If canceled: TODO
+
+Response when filled: 
+```
+{
+  id: '3b2ef891-81c8-4a98-9a7a-c8ce30642f1d',
+  marketId: 'dollartrx-above-dollar028121-on-mar-3-0800-utc-1772438402355',
+  outcome: 'No',
+  side: 'buy',
+  price: 0.349001,
+  size: 0.1,
+  filled: 0.286532,
+  status: 'filled',
+  orderType: 'FOK',
+  createdAt: 2026-03-02T16:49:56.563Z
+}
 ```
 
 ## Requirements
