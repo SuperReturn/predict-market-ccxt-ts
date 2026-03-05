@@ -20,7 +20,7 @@ async function main() {
   });
 
   // The order ID returned when the order was created
-  const orderId = '0xc959ef7f1d41b148a61d2af847b319a3672362759ff5ed6b518cea670383c5c3';
+  const orderId = '0xbb1e9d1ad6d2a4f0bc72e9a5eeab4abed819747c16fa0ba2d70741984655f7db';
   // Optional: the market conditionId the order belongs to
   const marketId = '0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75';
 

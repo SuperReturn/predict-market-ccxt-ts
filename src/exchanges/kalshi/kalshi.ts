@@ -311,6 +311,7 @@ export class Kalshi extends Exchange {
       size,
       filled,
       status,
+      orderType: 'GTC',
       createdAt,
       updatedAt,
     };

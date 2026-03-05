@@ -19,8 +19,8 @@ async function main() {
   });
 
   // The order ID returned when the order was created
-  const orderId = '457e0658-f26f-46a6-a3bc-817c983f6465';
-  const marketId = 'dollarsol-above-dollar88784-on-mar-1-0300-utc-1772330646040'; // market slug
+  const orderId = 'e01350c8-35f6-4059-a0da-521ac0a2c2f6';
+  const marketId = 'dollarxrp-above-dollar13537-on-mar-2-1000-utc-1772442002314'; // market slug
 
   console.log('Cancelling order:', { orderId, marketId });
 

@@ -333,6 +333,7 @@ export class Opinion extends Exchange {
       size,
       filled,
       status,
+      orderType: 'GTC',
       createdAt,
     };
   }
@@ -484,6 +485,7 @@ export class Opinion extends Exchange {
         size: params.size,
         filled: 0,
         status: OrderStatus.OPEN,
+        orderType: params.orderType ?? 'GTC',
         createdAt: new Date(),
       };
     });
@@ -508,6 +510,7 @@ export class Opinion extends Exchange {
         size: 0,
         filled: 0,
         status: OrderStatus.CANCELLED,
+        orderType: '',
         createdAt: new Date(),
       };
     });

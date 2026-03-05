@@ -400,6 +400,7 @@ export class PredictFun extends Exchange {
       size: amount,
       filled,
       status,
+      orderType: 'GTC',
       createdAt,
       updatedAt,
     };
@@ -621,6 +622,7 @@ export class PredictFun extends Exchange {
         size: params.size,
         filled: 0,
         status: OrderStatus.OPEN,
+        orderType: params.orderType ?? 'GTC',
         createdAt: new Date(),
       };
     });
@@ -763,6 +765,7 @@ export class PredictFun extends Exchange {
         size: 0,
         filled: 0,
         status: OrderStatus.CANCELLED,
+        orderType: '',
         createdAt: new Date(),
       };
     });

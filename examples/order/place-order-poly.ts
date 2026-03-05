@@ -20,16 +20,18 @@ async function main() {
   });
 
   // there might be some limitation for the market, e.g. min order size, min price, etc.
+  // example from: https://polymarket.com/zh/event/will-the-us-confirm-that-aliens-exist-before-2027
+  // for GTC price, if the set price is higher than the current price, it just cost the current price.
   const marketId = '0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75'; // conditionId
   const tokenId =
     '107505882767731489358349912513945399560393482969656700824895970500493757150417'; // clobTokenIds[Yes]
   const outcome = 'Yes';
   const side = OrderSide.BUY;
-  const price = 0.01;
-  const size = 5; // should >= orderMinSize in api response
+  const price = 0.5;
+  const size = 1; // should >= orderMinSize in api response
   // price * size should >= 1
 
-  console.log('Placing order:', { marketId, outcome, side, price, size, tokenId });
+  // console.log('Placing order:', { marketId, outcome, side, price, size, tokenId });
 
   try {
     const order = await polymarket.createOrder({
@@ -40,6 +42,17 @@ async function main() {
       size,
       tokenId,
     });
+
+    // FOK (Fill or Kill): must be fully filled immediately or cancelled entirely
+    // const order = await polymarket.createOrder({
+    //   marketId,
+    //   outcome,
+    //   side,
+    //   price,
+    //   size,
+    //   tokenId,
+    //   params: { orderType: 'FOK' },
+    // });
     console.log('Order placed:', order);
     console.log('Order ID:', order.id);
 

@@ -9,6 +9,15 @@ export const OrderSide = {
 } as const;
 export type OrderSide = (typeof OrderSide)[keyof typeof OrderSide];
 
+/** Order type - time in force */
+export const OrderType = {
+  GTC: 'GTC',
+  FOK: 'FOK',
+  FAK: 'FAK',
+  IOC: 'IOC',
+} as const;
+export type OrderType = (typeof OrderType)[keyof typeof OrderType] | string;
+
 /** Order status */
 export const OrderStatus = {
   PENDING: 'pending',
@@ -38,6 +47,8 @@ export interface Order {
   filled: number;
   /** Current status */
   status: OrderStatus;
+  /** Order type (e.g. GTC, FOK, FAK, IOC) */
+  orderType: string;
   /** Creation timestamp */
   createdAt: Date;
   /** Last update timestamp */
@@ -73,8 +84,24 @@ export interface CreateOrderParams {
   marketId: string;
   outcome: string;
   side: OrderSide;
-  price: number;
-  size: number;
+  /**
+   * Price per share (0–1, exclusive). Required for GTC orders.
+   * Omit for FOK orders — use `makerAmount` instead.
+   */
+  price?: number;
+  /**
+   * Number of shares. Required for GTC orders.
+   * Omit for FOK orders — use `makerAmount` instead.
+   */
+  size?: number;
+  /**
+   * For FOK orders only.
+   * BUY: total USDC to spend. SELL: total shares to sell.
+   * When provided, `price` and `size` are ignored.
+   */
+  makerAmount?: number;
+  /** Order type (e.g. GTC, FOK, FAK, IOC). Defaults to GTC. */
+  orderType?: string;
   /** Token ID (required for some exchanges) */
   tokenId?: string;
   /** Additional exchange-specific parameters */
