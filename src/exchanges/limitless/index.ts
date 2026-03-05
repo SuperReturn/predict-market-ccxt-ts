@@ -54,6 +54,7 @@ interface RawOrder {
   market_id?: string;
   side?: number | string;
   status?: string;
+  orderType?: string;
   price?: number;
   size?: number;
   amount?: number;
@@ -66,6 +67,28 @@ interface RawOrder {
   tokenId?: string;
   createdAt?: string | number;
   updatedAt?: string | number;
+}
+
+interface CreateOrderResponse {
+  order?: RawOrder;
+  makerMatches?: Array<{
+    matchedSize?: string | number;
+    fillPrice?: string | number;
+    fillCost?: string | number;
+    orderId?: string;
+  }>;
+  execution?: {
+    matched?: boolean;
+    settlementStatus?: string;
+    totalsRaw?: {
+      contractsGross?: string | number;
+      contractsFee?: string | number;
+      contractsNet?: string | number;
+      usdGross?: string | number;
+      usdFee?: string | number;
+      usdNet?: string | number;
+    };
+  };
 }
 
 interface RawPosition {
@@ -370,6 +393,7 @@ export class Limitless extends Exchange {
       size,
       filled,
       status,
+      orderType: data.orderType?.toUpperCase() ?? 'GTC',
       createdAt,
     };
   }
@@ -578,8 +602,29 @@ export class Limitless extends Exchange {
       throw new InvalidOrder(`Could not find token_id for outcome '${params.outcome}'`);
     }
 
-    if (params.price <= 0 || params.price >= 1) {
-      throw new InvalidOrder(`Price must be between 0 and 1, got: ${params.price}`);
+    const orderType = (params.orderType ?? (params.params?.order_type as string))?.toUpperCase() ?? 'GTC';
+    const isFok = orderType === 'FOK';
+
+    // Resolve makerAmount for FOK — can come from top-level or params bag
+    const makerAmountOverride =
+      params.makerAmount ?? (params.params?.makerAmount as number | undefined);
+
+    if (isFok) {
+      if (makerAmountOverride === undefined || makerAmountOverride <= 0) {
+        throw new InvalidOrder(
+          'FOK orders require a positive `makerAmount` (USDC for BUY, shares for SELL)'
+        );
+      }
+    } else {
+      // GTC / FAK / IOC require price and size
+      if (params.price === undefined || params.price <= 0 || params.price >= 1) {
+        throw new InvalidOrder(
+          `Price must be between 0 and 1 (exclusive), got: ${params.price}`
+        );
+      }
+      if (params.size === undefined || params.size <= 0) {
+        throw new InvalidOrder(`Size must be a positive number, got: ${params.size}`);
+      }
     }
 
     const venue = market.metadata?.venue as { exchange?: string } | undefined;
@@ -588,17 +633,19 @@ export class Limitless extends Exchange {
       throw new InvalidOrder('Market does not have venue.exchange address');
     }
 
-    const orderType = (params.params?.order_type as string)?.toUpperCase() ?? 'GTC';
     const feeRateBps = 300;
+    const price = params.price ?? 0;
+    const size = params.size ?? 0;
 
     const signedOrder = await this.buildSignedOrder(
       tokenId,
-      params.price,
-      params.size,
+      price,
+      size,
       params.side,
       orderType,
       exchangeAddress,
-      feeRateBps
+      feeRateBps,
+      isFok ? makerAmountOverride : undefined
     );
 
     const payload: Record<string, unknown> = {
@@ -615,26 +662,73 @@ export class Limitless extends Exchange {
     }
 
     return this.withRetry(async () => {
-      const result = await this.request<{ order?: RawOrder } | RawOrder>(
+      const result = await this.request<CreateOrderResponse>(
         'POST',
         '/orders',
         payload,
         true
       );
 
-      const orderData = (result as { order?: RawOrder }).order ?? (result as RawOrder);
-      const orderId = orderData.id ?? orderData.orderId ?? '';
-      const statusStr = orderData.status ?? 'LIVE';
+      console.log('create order result:', result);
+
+      const orderData = result.order ?? (result as unknown as RawOrder);
+      const orderId = String(orderData.id ?? orderData.orderId ?? '');
+      const orderSize = isFok ? (makerAmountOverride ?? 0) : size;
+
+      // Derive fill amount and status from the execution block returned by the API.
+      // The `order` sub-object does not carry a status field; the authoritative
+      // fill data lives in `execution.totalsRaw` and `execution.matched`.
+      const execution = result.execution;
+      const totalsRaw = execution?.totalsRaw;
+      const contractsGross = totalsRaw?.contractsGross !== undefined
+        ? Number(totalsRaw.contractsGross) / 1_000_000
+        : 0;
+
+      let filledAmount = contractsGross;
+      let status: OrderStatus;
+
+      if (execution?.matched) {
+        if (contractsGross >= orderSize - 1e-9) {
+          status = OrderStatus.FILLED;
+        } else {
+          status = OrderStatus.PARTIALLY_FILLED;
+        }
+      } else if ((result.makerMatches?.length ?? 0) > 0) {
+        // Fallback: makerMatches present but execution block absent
+        const totalMatched = result.makerMatches!.reduce(
+          (sum, m) => sum + Number(m.matchedSize ?? 0) / 1_000_000,
+          0
+        );
+        filledAmount = totalMatched;
+        status = totalMatched >= orderSize - 1e-9
+          ? OrderStatus.FILLED
+          : OrderStatus.PARTIALLY_FILLED;
+      } else {
+        filledAmount = 0;
+        status = this.parseOrderStatus(orderData.status ?? 'LIVE');
+      }
+
+      // For FOK orders the caller doesn't supply a price; derive the effective
+      // fill price from totalsRaw (usdGross / contractsGross, both in micro-units).
+      let effectivePrice = price;
+      if (isFok && totalsRaw?.usdGross !== undefined && totalsRaw?.contractsGross !== undefined) {
+        const usdGross = Number(totalsRaw.usdGross);
+        const contractsGross = Number(totalsRaw.contractsGross);
+        if (contractsGross > 0) {
+          effectivePrice = Math.round((usdGross / contractsGross) * 1e6) / 1e6;
+        }
+      }
 
       return {
-        id: String(orderId),
+        id: orderId,
         marketId: params.marketId,
         outcome: params.outcome,
         side: params.side,
-        price: params.price,
-        size: params.size,
-        filled: Number(orderData.filled ?? 0),
-        status: this.parseOrderStatus(statusStr),
+        price: effectivePrice,
+        size: orderSize,
+        filled: filledAmount,
+        status,
+        orderType,
         createdAt: new Date(),
       };
     });
@@ -647,7 +741,8 @@ export class Limitless extends Exchange {
     side: OrderSide,
     orderType: string,
     exchangeAddress: string,
-    feeRateBps: number
+    feeRateBps: number,
+    makerAmountOverride?: number
   ): Promise<Record<string, unknown>> {
     if (!this.wallet || !this.address) {
       throw new AuthenticationError('Wallet not initialized');
@@ -658,36 +753,41 @@ export class Limitless extends Exchange {
     const oneDayMs = 1000 * 60 * 60 * 24;
     const salt = timestampMs * 1000 + nanoOffset + oneDayMs;
 
-    const sharesScale = 1_000_000;
-    const collateralScale = 1_000_000;
-    const priceScale = 1_000_000;
-    const priceTick = 0.001;
-
-    let shares = Math.floor(size * sharesScale);
-    const priceInt = Math.floor(price * priceScale);
-    const tickInt = Math.floor(priceTick * priceScale);
-
-    const sharesStep = Math.floor(priceScale / tickInt);
-    if (shares % sharesStep !== 0) {
-      shares = Math.floor(shares / sharesStep) * sharesStep;
-    }
-
-    const numerator = shares * priceInt * collateralScale;
-    const denominator = sharesScale * priceScale;
-
     const sideInt = side === OrderSide.BUY ? 0 : 1;
 
     let makerAmount: number;
     let takerAmount: number;
 
-    if (side === OrderSide.BUY) {
-      const collateral = Math.ceil(numerator / denominator);
-      makerAmount = collateral;
-      takerAmount = shares;
+    if (orderType === 'FOK' && makerAmountOverride !== undefined) {
+      // FOK: makerAmount is provided directly (USDC for BUY, shares for SELL).
+      // takerAmount is 0 — the exchange resolves the fill against the live orderbook.
+      makerAmount = Math.floor(makerAmountOverride * 1_000_000);
+      takerAmount = 1;
     } else {
-      const collateral = Math.floor(numerator / denominator);
-      makerAmount = shares;
-      takerAmount = collateral;
+      const sharesScale = 1_000_000;
+      const collateralScale = 1_000_000;
+      const priceScale = 1_000_000;
+      const priceTick = 0.001;
+
+      let shares = Math.floor(size * sharesScale);
+      const priceInt = Math.floor(price * priceScale);
+      const tickInt = Math.floor(priceTick * priceScale);
+
+      const sharesStep = Math.floor(priceScale / tickInt);
+      if (shares % sharesStep !== 0) {
+        shares = Math.floor(shares / sharesStep) * sharesStep;
+      }
+
+      const numerator = shares * priceInt * collateralScale;
+      const denominator = sharesScale * priceScale;
+
+      if (side === OrderSide.BUY) {
+        makerAmount = Math.ceil(numerator / denominator);
+        takerAmount = shares;
+      } else {
+        makerAmount = shares;
+        takerAmount = Math.floor(numerator / denominator);
+      }
     }
 
     const orderForSigning = {
@@ -800,6 +900,7 @@ export class Limitless extends Exchange {
         size: 0,
         filled: 0,
         status: OrderStatus.CANCELLED,
+        orderType: '',
         createdAt: new Date(),
       };
     });

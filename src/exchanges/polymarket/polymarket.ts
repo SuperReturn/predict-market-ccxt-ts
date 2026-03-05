@@ -1,4 +1,4 @@
-import { AssetType, ClobClient, Side } from '@polymarket/clob-client';
+import { AssetType, ClobClient, OrderType, Side } from '@polymarket/clob-client';
 import { Wallet } from 'ethers';
 import { Exchange, type ExchangeConfig } from '../../core/exchange.js';
 import {
@@ -224,26 +224,57 @@ export class Polymarket extends Exchange {
 
     return this.withRetry(async () => {
       const client = await this.ensureAuthenticated();
-      const signedOrder = await client.createOrder({
-        tokenID: tokenId as string,
-        price: params.price,
-        size: params.size,
-        side: params.side === OrderSide.BUY ? Side.BUY : Side.SELL,
-      });
+      const orderType = params.orderType ?? (params.params?.orderType as string | undefined);
+      const isFok = orderType === OrderType.FOK;
+      const isFak = orderType === OrderType.FAK;
 
-      const result = (await client.postOrder(signedOrder)) as Record<string, unknown>;
+      let result: Record<string, unknown>;
+      if (isFok || isFak) {
+        // FOK: must be fully filled or cancelled entirely
+        // FAK: partially fillable, remainder cancelled
+        // amount = dollar amount for BUY, shares for SELL
+        const signedMarketOrder = await client.createMarketOrder({
+          tokenID: tokenId as string,
+          price: params.price,
+          amount: params.size,
+          side: params.side === OrderSide.BUY ? Side.BUY : Side.SELL,
+          orderType: isFok ? OrderType.FOK : OrderType.FAK,
+        });
+        result = (await client.postOrder(signedMarketOrder, isFok ? OrderType.FOK : OrderType.FAK)) as Record<string, unknown>;
+      } else {
+        const signedOrder = await client.createOrder({
+          tokenID: tokenId as string,
+          price: params.price,
+          size: params.size,
+          side: params.side === OrderSide.BUY ? Side.BUY : Side.SELL,
+        });
+        result = (await client.postOrder(signedOrder)) as Record<string, unknown>;
+      }
+
+      console.log("polymarket createOrder result:")
+      console.log(result);
       const orderId = (result.orderID as string) ?? '';
       const statusStr = (result.status as string) ?? 'LIVE';
+
+      const takingAmount = Number((result.takingAmount as string) ?? 0);
+      const makingAmount = Number((result.makingAmount as string) ?? 0);
+      // BUY: takingAmount = shares received; SELL: makingAmount = shares sold
+      const filled = params.side === OrderSide.BUY ? takingAmount : makingAmount;
+      // Actual execution price = USDC / shares; fallback to limit price if not yet filled
+      const usdcAmount = params.side === OrderSide.BUY ? makingAmount : takingAmount;
+      const shareAmount = params.side === OrderSide.BUY ? takingAmount : makingAmount;
+      const price = shareAmount > 0 ? usdcAmount / shareAmount : params.price;
 
       return {
         id: orderId,
         marketId: params.marketId,
         outcome: params.outcome,
         side: params.side,
-        price: params.price,
+        price,
         size: params.size,
-        filled: 0,
+        filled,
         status: this.parseOrderStatus(statusStr),
+        orderType: orderType ?? 'GTC',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -264,6 +295,7 @@ export class Polymarket extends Exchange {
         size: 0,
         filled: 0,
         status: OrderStatus.CANCELLED,
+        orderType: '',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -468,6 +500,7 @@ export class Polymarket extends Exchange {
       size,
       filled,
       status: this.parseOrderStatus(data.status as string),
+      orderType: (data.order_type as string) ?? 'GTC',
       createdAt: this.parseDateTime(data.created_at) ?? new Date(),
       updatedAt: this.parseDateTime(data.updated_at),
     };
