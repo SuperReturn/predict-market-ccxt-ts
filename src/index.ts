@@ -23,7 +23,12 @@ export {
   RateLimitError,
 } from './errors/index.js';
 export {
+  Betfair,
+  type BetfairConfig,
+  type BetfairFetchMarketsParams,
   createExchange,
+  FanDuel,
+  type FanDuelConfig,
   Kalshi,
   Limitless,
   LimitlessWebSocket,
