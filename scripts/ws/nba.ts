@@ -13,7 +13,8 @@ dotenv.config();
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const GAMMA_API = 'https://gamma-api.polymarket.com';
-const NBA_SERIES_SLUG = 'nba-2026';
+/** Polymarket NBA 2026 daily series ID (confirmed via /events?series_id=10345) */
+const NBA_SERIES_ID = 10345;
 
 /** Minimum USD liquidity to include a Polymarket game */
 const MIN_LIQUIDITY = 1_000;
@@ -26,6 +27,13 @@ const PRE_GAME_LOOKAHEAD_MS = 48 * 60 * 60 * 1_000;
 
 /** Betfair data is refreshed at most once per this interval (ms) */
 const BETFAIR_COOLDOWN_MS = 60_000;
+
+/**
+ * Minimum time before tip-off to still track a game.
+ * Games starting sooner than this are skipped – spreads widen and execution
+ * risk increases too close to tip-off for reliable pre-match arb.
+ */
+const MIN_PRE_GAME_MS = 30 * 60 * 1_000; // 30 minutes
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,86 +71,121 @@ let allBetfairMarkets: Market[] = [];
 // ─── Polymarket data fetch ────────────────────────────────────────────────────
 
 async function fetchNbaGamesFromPolymarket(): Promise<NbaGame[]> {
-  const url =
-    `${GAMMA_API}/events?series_slug=${NBA_SERIES_SLUG}` +
-    `&active=true&closed=false&limit=100`;
+  /**
+   * Correct endpoint: /events?series_id=10345
+   *
+   * Structure returned per event:
+   *   ev.title        "Celtics vs. Spurs"
+   *   ev.startTime    "2026-03-11T00:00:00Z"   ← game tip-off (ISO 8601)
+   *   ev.eventDate    "2026-03-10"
+   *   ev.period       "NS" | "1H" | "VFT" …
+   *   ev.markets[]
+   *     .sportsMarketType  "moneyline"
+   *     .question          "Celtics vs. Spurs"
+   *     .outcomes          "[\"Celtics\",\"Spurs\"]"
+   *     .clobTokenIds      "[\"<tokenA>\",\"<tokenB>\"]"
+   *     .liquidityNum      number
+   *     .acceptingOrders   boolean
+   */
+  const now = Date.now();
 
-  console.log("polymarket url:", url);
+  // Note: the Gamma API does not support date-range query params –
+  // time-window filtering (MIN_PRE_GAME_MS / PRE_GAME_LOOKAHEAD_MS) is done
+  // in-process on the full result set below.
+  const url =
+    `${GAMMA_API}/events` +
+    `?series_id=${NBA_SERIES_ID}&active=true&closed=false&limit=100` +
+    `&order=startDate&ascending=true`;
+
+  console.log('[Polymarket] fetching:', url);
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Gamma API error: ${res.status}`);
 
   const events = (await res.json()) as Array<Record<string, unknown>>;
+  console.log(`[Polymarket] NBA events returned: ${events.length}`);
+
   const result: NbaGame[] = [];
+  let skippedStarted = 0;
+  let skippedTooClose = 0;
+  let skippedFuture = 0;
+  let skippedNoMarket = 0;
+  let skippedLiquidity = 0;
 
-  for (const event of events) {
-    const slug = String(event.slug ?? event.ticker ?? '');
-    const title = String(event.title ?? '');
-    const rawMarkets = (event.markets ?? []) as Array<Record<string, unknown>>;
+  for (const ev of events) {
+    // Game start time is on the event itself
+    const gameStartRaw = String(ev.startTime ?? ev.endDate ?? '');
+    const gameStart = gameStartRaw ? new Date(gameStartRaw) : null;
 
-    for (const m of rawMarkets) {
-      // Only moneyline (h2h) markets
-      if (String(m.sportsMarketType ?? '') !== 'moneyline') continue;
-      if (m.closed || !m.active) continue;
-
-      // Pre-game only: period must be "NS" (Not Started) or gameStartTime in future
-      const period = String(m.period ?? event.period ?? '');
-      const gameStartRaw = String(m.gameStartTime ?? event.gameStartTime ?? event.startTime ?? '');
-      const gameStart = gameStartRaw ? new Date(gameStartRaw) : null;
-      const now = Date.now();
-
-      if (gameStart) {
-        const msUntilStart = gameStart.getTime() - now;
-        // Skip games that have already started or are too far in the future
-        if (msUntilStart <= 0) continue;
-        if (msUntilStart > PRE_GAME_LOOKAHEAD_MS) continue;
-      } else if (period && period !== 'NS') {
-        // If no gameStartTime but period is known and not "NS", skip
-        continue;
-      }
-
-      const liquidity = Number(m.liquidityNum ?? m.liquidity ?? 0);
-      if (liquidity < MIN_LIQUIDITY) continue;
-
-      let outcomes: string[] = [];
-      try {
-        outcomes = typeof m.outcomes === 'string'
-          ? (JSON.parse(m.outcomes) as string[])
-          : (m.outcomes as string[]) ?? [];
-      } catch { continue; }
-
-      let tokenIds: string[] = [];
-      try {
-        tokenIds = typeof m.clobTokenIds === 'string'
-          ? (JSON.parse(m.clobTokenIds) as string[])
-          : (m.clobTokenIds as string[]) ?? [];
-      } catch { continue; }
-
-      if (!outcomes.length || !tokenIds.length) continue;
-
-      const tokens: GameToken[] = tokenIds.map((tokenId, i) => ({
-        tokenId,
-        outcome: outcomes[i] ?? `Outcome${i}`,
-      }));
-
-      const polyPrices: Record<string, TeamPrice> = {};
-      for (const o of outcomes) {
-        polyPrices[o] = { bid: null, ask: null, mid: null };
-      }
-
-      result.push({
-        slug,
-        question: String(m.question ?? title),
-        outcomes,
-        tokens,
-        polyPrices,
-        betfairMarket: null,
-        gameStartTime: gameStart,
-      });
-
-      break; // one moneyline per event
+    // ── Pre-game filter ───────────────────────────────────────────────────────
+    if (gameStart && !Number.isNaN(gameStart.getTime())) {
+      const msUntilStart = gameStart.getTime() - now;
+      if (msUntilStart <= 0) { skippedStarted++; continue; }
+      if (msUntilStart < MIN_PRE_GAME_MS) { skippedTooClose++; continue; }
+      if (msUntilStart > PRE_GAME_LOOKAHEAD_MS) { skippedFuture++; continue; }
+    } else {
+      // No parseable start time: only keep "NS" (Not Started)
+      if (String(ev.period ?? '') !== 'NS') continue;
     }
+
+    // Find the moneyline market inside the event
+    const rawMarkets = (ev.markets ?? []) as Array<Record<string, unknown>>;
+    const ml = rawMarkets.find((m) => m.sportsMarketType === 'moneyline');
+
+    if (!ml || ml.closed || !ml.active || !ml.acceptingOrders) {
+      skippedNoMarket++;
+      continue;
+    }
+
+    const liquidity = Number(ml.liquidityNum ?? ml.liquidity ?? 0);
+    if (liquidity < MIN_LIQUIDITY) { skippedLiquidity++; continue; }
+
+    let outcomes: string[] = [];
+    try {
+      outcomes = typeof ml.outcomes === 'string'
+        ? (JSON.parse(ml.outcomes) as string[])
+        : (ml.outcomes as string[]) ?? [];
+    } catch { continue; }
+
+    let tokenIds: string[] = [];
+    try {
+      tokenIds = typeof ml.clobTokenIds === 'string'
+        ? (JSON.parse(ml.clobTokenIds) as string[])
+        : (ml.clobTokenIds as string[]) ?? [];
+    } catch { continue; }
+
+    if (!outcomes.length || !tokenIds.length) continue;
+
+    const tokens: GameToken[] = tokenIds.map((tokenId, i) => ({
+      tokenId,
+      outcome: outcomes[i] ?? `Outcome${i}`,
+    }));
+
+    const polyPrices: Record<string, TeamPrice> = {};
+    for (const o of outcomes) {
+      polyPrices[o] = { bid: null, ask: null, mid: null };
+    }
+
+    result.push({
+      slug: String(ev.slug ?? ml.slug ?? ''),
+      question: String(ml.question ?? ev.title ?? ''),
+      outcomes,
+      tokens,
+      polyPrices,
+      betfairMarket: null,
+      gameStartTime: gameStart,
+    });
   }
+
+  console.log(
+    `[Polymarket] filter: ` +
+    `total=${events.length}  ` +
+    `started_skip=${skippedStarted}  ` +
+    `too_close_skip=${skippedTooClose}  ` +
+    `future_skip=${skippedFuture}  ` +
+    `no_market_skip=${skippedNoMarket}  liq_skip=${skippedLiquidity}  ` +
+    `✓ accepted=${result.length}`
+  );
 
   return result;
 }
@@ -152,15 +195,15 @@ async function fetchNbaGamesFromPolymarket(): Promise<NbaGame[]> {
 async function fetchBetfairNbaMarkets(oddsApiKey: string): Promise<Market[]> {
   const betfair = createExchange('betfair', { apiKey: oddsApiKey });
   const now = new Date();
-  const lookahead = new Date(now.getTime() + PRE_GAME_LOOKAHEAD_MS);
+  const minStart = new Date(now.getTime() + MIN_PRE_GAME_MS);
+  const maxStart = new Date(now.getTime() + PRE_GAME_LOOKAHEAD_MS);
   return betfair.fetchMarkets({
     sportKey: 'basketball_nba',
     markets: 'h2h',
     regions: 'uk',
     bookmakers: 'betfair_ex_uk',
-    // Only games that haven't started yet (commence_time in the future)
-    commenceTimeFrom: now.toISOString(),
-    commenceTimeTo: lookahead.toISOString(),
+    commenceTimeFrom: minStart.toISOString().slice(0, 19) + 'Z',
+    commenceTimeTo: maxStart.toISOString().slice(0, 19) + 'Z',
   });
 }
 
@@ -267,6 +310,17 @@ async function handleUpdate(
   const game = tokenToGame.get(tokenId);
   if (!game) return;
 
+  // Drop updates once a game enters the MIN_PRE_GAME_MS exclusion window at runtime
+  if (game.gameStartTime) {
+    const msUntil = game.gameStartTime.getTime() - Date.now();
+    if (msUntil < MIN_PRE_GAME_MS) {
+      console.log(
+        `[skip] ${game.question} – tip-off in ${Math.ceil(msUntil / 60_000)} min (< ${MIN_PRE_GAME_MS / 60_000} min threshold)`
+      );
+      return;
+    }
+  }
+
   const token = game.tokens.find((t) => t.tokenId === tokenId);
   if (!token) return;
 
@@ -317,7 +371,14 @@ async function main() {
   console.log(`Found ${nbaGames.length} active NBA games on Polymarket`);
 
   if (nbaGames.length === 0) {
-    console.error('No active NBA games found – exiting');
+    const windowH = PRE_GAME_LOOKAHEAD_MS / 3_600_000;
+    console.error(
+      `No pre-game NBA markets found within the next ${windowH} h.\n` +
+      `Possible reasons:\n` +
+      `  1. No NBA games scheduled in the next ${windowH} h (check nba.com schedule).\n` +
+      `  2. Today's games have already tipped off (gameStartTime <= now).\n` +
+      `  3. Increase PRE_GAME_LOOKAHEAD_MS (currently ${windowH} h) to look further ahead.\n`
+    );
     process.exit(1);
   }
 

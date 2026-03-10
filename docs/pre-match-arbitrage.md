@@ -47,6 +47,28 @@ Betfair lay odds      →  implied prob  =  1 / lay odds   (e.g. 2.80 = 35.7%)
 
 ---
 
+### Reading the Delta
+
+The script prints a **Delta** for every team on every tick:
+
+```
+Delta = Polymarket mid − Betfair implied probability
+```
+
+It answers: **"How much cheaper / more expensive is Polymarket vs Betfair for the same outcome?"**
+
+| Delta | Meaning | Action signal |
+|---|---|---|
+| **Negative** (e.g. −0.97%) | Polymarket prices this team **cheaper** than Betfair | Buy on Polymarket, back opponent on Betfair |
+| **≈ Zero** | Both platforms agree on the price | No edge |
+| **Positive** (e.g. +0.02%) | Polymarket prices this team **more expensive** than Betfair | Buy opponent on Polymarket, back this team on Betfair |
+
+The **larger the absolute value**, the bigger the pricing gap — and the more attractive that leg of the arb.
+
+A useful cross-check: for a two-outcome game, **sum both deltas**. The total should equal −(Betfair overround). If one team's delta is near zero while the other's is large and negative, almost all of Betfair's overround is concentrated on one side — that asymmetry is where the best arb candidates appear.
+
+---
+
 ### Worked Example
 
 #### Market snapshot (hypothetical)
@@ -120,6 +142,8 @@ Spurs win:   Betfair leg unchanged (loss, no commission) →  net = +$93.50
 > Commission only applies to **net winning** on Betfair. Adjust the stake `B` upward to compensate and still lock in symmetric profit.
 
 ---
+
+
 
 ### Real-World Caveats
 
