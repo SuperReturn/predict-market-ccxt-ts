@@ -34,3 +34,17 @@ export type {
   PublicTrade,
   Tag,
 } from './trade.js';
+
+export type {
+  OddsApiBookmaker,
+  OddsApiBookmakerKey,
+  OddsApiEvent,
+  OddsApiMarket,
+  OddsApiMarketKey,
+  OddsApiOutcome,
+  OddsApiRegion,
+  OddsApiRequestParams,
+  OddsApiResponse,
+  OddsApiSportKey,
+  SportsbookFetchMarketsParams,
+} from './sportsbook.js';

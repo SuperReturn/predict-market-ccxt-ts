@@ -1,10 +1,16 @@
 import type { Exchange, ExchangeConfig } from '../core/exchange.js';
+import { Betfair } from '../sportsbook/betfair/index.js';
+import { FanDuel } from '../sportsbook/fanduel/index.js';
 import { Kalshi } from './kalshi/index.js';
 import { Limitless } from './limitless/index.js';
 import { Opinion } from './opinion/index.js';
 import { Polymarket } from './polymarket/index.js';
 import { PredictFun } from './predictfun/index.js';
 
+export { Betfair } from '../sportsbook/betfair/index.js';
+export type { BetfairConfig, BetfairFetchMarketsParams } from '../sportsbook/betfair/index.js';
+export { FanDuel } from '../sportsbook/fanduel/index.js';
+export type { FanDuelConfig } from '../sportsbook/fanduel/index.js';
 export { Kalshi } from './kalshi/index.js';
 export { Limitless, LimitlessWebSocket } from './limitless/index.js';
 export { Opinion } from './opinion/index.js';
@@ -19,6 +25,8 @@ const exchanges: Record<string, ExchangeClass> = {
   limitless: Limitless,
   kalshi: Kalshi,
   predictfun: PredictFun,
+  fanduel: FanDuel,
+  betfair: Betfair,
 };
 
 export function listExchanges(): string[] {

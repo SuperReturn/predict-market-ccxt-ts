@@ -1,0 +1,198 @@
+Fetching NBA games from Polymarket...
+[Polymarket] fetching: https://gamma-api.polymarket.com/events?series_id=10345&active=true&closed=false&limit=100&order=startDate&ascending=true
+[Polymarket] NBA events returned: 51
+[Polymarket] filter: total=51  started_skip=1  too_close_skip=0  future_skip=33  no_market_skip=0  liq_skip=0  ✓ accepted=17
+Found 17 active NBA games on Polymarket
+  Pistons vs. Nets                          @2026-03-10T23:30:00.000Z  (2 tokens)
+  Wizards vs. Heat                          @2026-03-10T23:30:00.000Z  (2 tokens)
+  Bulls vs. Warriors                        @2026-03-11T02:00:00.000Z  (2 tokens)
+  Celtics vs. Spurs                         @2026-03-11T00:00:00.000Z  (2 tokens)
+  Grizzlies vs. 76ers                       @2026-03-10T23:00:00.000Z  (2 tokens)
+  Raptors vs. Rockets                       @2026-03-11T00:00:00.000Z  (2 tokens)
+  Mavericks vs. Hawks                       @2026-03-10T23:30:00.000Z  (2 tokens)
+  Suns vs. Bucks                            @2026-03-11T00:00:00.000Z  (2 tokens)
+  Timberwolves vs. Lakers                   @2026-03-11T03:00:00.000Z  (2 tokens)
+  Pacers vs. Kings                          @2026-03-11T02:00:00.000Z  (2 tokens)
+  Hornets vs. Trail Blazers                 @2026-03-11T02:00:00.000Z  (2 tokens)
+  Hornets vs. Kings                         @2026-03-12T02:00:00.000Z  (2 tokens)
+  Timberwolves vs. Clippers                 @2026-03-12T02:30:00.000Z  (2 tokens)
+  Raptors vs. Pelicans                      @2026-03-12T00:00:00.000Z  (2 tokens)
+  Knicks vs. Jazz                           @2026-03-12T01:00:00.000Z  (2 tokens)
+  Cavaliers vs. Magic                       @2026-03-11T23:30:00.000Z  (2 tokens)
+  Rockets vs. Nuggets                       @2026-03-12T02:00:00.000Z  (2 tokens)
+
+Fetching Betfair NBA markets...
+url: https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=58a2a0be8658f4c635cd75a735ebb749&markets=h2h%2Ch2h_lay&regions=uk&bookmakers=betfair_ex_uk&oddsFormat=decimal&commenceTimeFrom=2026-03-10T08%3A52%3A49Z&commenceTimeTo=2026-03-12T08%3A22%3A49Z
+Found 11 Betfair NBA h2h markets
+  Pistons vs. Nets                         → NBA: Brooklyn Nets vs Detroit Pistons (h2h)
+  Wizards vs. Heat                         → NBA: Miami Heat vs Washington Wizards (h2h)
+  Bulls vs. Warriors                       → NBA: Golden State Warriors vs Chicago Bulls (h2h)
+  Celtics vs. Spurs                        → NBA: San Antonio Spurs vs Boston Celtics (h2h)
+  Grizzlies vs. 76ers                      → NBA: Philadelphia 76ers vs Memphis Grizzlies (h2h)
+  Raptors vs. Rockets                      → NBA: Houston Rockets vs Toronto Raptors (h2h)
+  Mavericks vs. Hawks                      → NBA: Atlanta Hawks vs Dallas Mavericks (h2h)
+  Suns vs. Bucks                           → NBA: Milwaukee Bucks vs Phoenix Suns (h2h)
+  Timberwolves vs. Lakers                  → NBA: Los Angeles Lakers vs Minnesota Timberwolves (h2h)
+  Pacers vs. Kings                         → NBA: Sacramento Kings vs Indiana Pacers (h2h)
+  Hornets vs. Trail Blazers                → NBA: Portland Trail Blazers vs Charlotte Hornets (h2h)
+  Hornets vs. Kings                        → —not matched—
+  Timberwolves vs. Clippers                → —not matched—
+  Raptors vs. Pelicans                     → —not matched—
+  Knicks vs. Jazz                          → —not matched—
+  Cavaliers vs. Magic                      → —not matched—
+  Rockets vs. Nuggets                      → —not matched—
+
+Connecting to Polymarket WebSocket...
+
+Subscribed to 34 tokens across 17 NBA games. Press Ctrl+C to exit.
+
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:22:52.532Z]  Pacers vs. Kings
+  PRE-GAME  starts in 17h 37m (2026-03-11T02:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Pacers                   bid=38.00%  ask=39.00%  mid=38.50%
+    Kings                    bid= N/A   ask= N/A   mid= N/A 
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Indiana Pacers           back=2.52  lay=2.62  implied=39.68%
+    Sacramento Kings         back=1.62  lay=1.66  implied=61.73%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Pacers                   -1.18%  (Poly: 38.50%  Betfair: 39.68%)
+────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:22:52.532Z]  Pacers vs. Kings
+  PRE-GAME  starts in 17h 37m (2026-03-11T02:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Pacers                   bid=38.00%  ask=39.00%  mid=38.50%
+    Kings                    bid=61.00%  ask=62.00%  mid=61.50%
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Indiana Pacers           back=2.52  lay=2.62  implied=39.68%
+    Sacramento Kings         back=1.62  lay=1.66  implied=61.73%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Pacers                   -1.18%  (Poly: 38.50%  Betfair: 39.68%)
+    Kings                    -0.23%  (Poly: 61.50%  Betfair: 61.73%)
+────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:22:54.363Z]  Celtics vs. Spurs
+  PRE-GAME  starts in 15h 37m (2026-03-11T00:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Celtics                  bid=43.00%  ask=44.00%  mid=43.50%
+    Spurs                    bid= N/A   ask= N/A   mid= N/A 
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Boston Celtics           back=2.3  lay=2.36  implied=43.48%
+    San Antonio Spurs        back=1.74  lay=1.77  implied=57.47%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Celtics                  +0.02%  (Poly: 43.50%  Betfair: 43.48%)
+────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:22:54.364Z]  Celtics vs. Spurs
+  PRE-GAME  starts in 15h 37m (2026-03-11T00:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Celtics                  bid=43.00%  ask=44.00%  mid=43.50%
+    Spurs                    bid=56.00%  ask=57.00%  mid=56.50%
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Boston Celtics           back=2.3  lay=2.36  implied=43.48%
+    San Antonio Spurs        back=1.74  lay=1.77  implied=57.47%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Celtics                  +0.02%  (Poly: 43.50%  Betfair: 43.48%)
+    Spurs                    -0.97%  (Poly: 56.50%  Betfair: 57.47%)
+────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:22:55.150Z]  Celtics vs. Spurs
+  PRE-GAME  starts in 15h 37m (2026-03-11T00:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Celtics                  bid=43.00%  ask=44.00%  mid=43.50%
+    Spurs                    bid=56.00%  ask=57.00%  mid=56.50%
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Boston Celtics           back=2.3  lay=2.36  implied=43.48%
+    San Antonio Spurs        back=1.74  lay=1.77  implied=57.47%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Celtics                  +0.02%  (Poly: 43.50%  Betfair: 43.48%)
+    Spurs                    -0.97%  (Poly: 56.50%  Betfair: 57.47%)
+────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:22:55.151Z]  Celtics vs. Spurs
+  PRE-GAME  starts in 15h 37m (2026-03-11T00:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Celtics                  bid=43.00%  ask=44.00%  mid=43.50%
+    Spurs                    bid=56.00%  ask=57.00%  mid=56.50%
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Boston Celtics           back=2.3  lay=2.36  implied=43.48%
+    San Antonio Spurs        back=1.74  lay=1.77  implied=57.47%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Celtics                  +0.02%  (Poly: 43.50%  Betfair: 43.48%)
+    Spurs                    -0.97%  (Poly: 56.50%  Betfair: 57.47%)
+────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:23:00.477Z]  Timberwolves vs. Lakers
+  PRE-GAME  starts in 18h 36m (2026-03-11T03:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Timberwolves             bid=54.00%  ask=55.00%  mid=54.50%
+    Lakers                   bid= N/A   ask= N/A   mid= N/A 
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Los Angeles Lakers       back=2.16  lay=2.22  implied=46.30%
+    Minnesota Timberwolves   back=1.83  lay=1.86  implied=54.64%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Timberwolves             -0.14%  (Poly: 54.50%  Betfair: 54.64%)
+────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:23:00.478Z]  Timberwolves vs. Lakers
+  PRE-GAME  starts in 18h 36m (2026-03-11T03:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Timberwolves             bid=54.00%  ask=55.00%  mid=54.50%
+    Lakers                   bid=45.00%  ask=46.00%  mid=45.50%
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Los Angeles Lakers       back=2.16  lay=2.22  implied=46.30%
+    Minnesota Timberwolves   back=1.83  lay=1.86  implied=54.64%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Timberwolves             -0.14%  (Poly: 54.50%  Betfair: 54.64%)
+    Lakers                   -0.80%  (Poly: 45.50%  Betfair: 46.30%)
+────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────
+  [2026-03-10T08:23:01.024Z]  Celtics vs. Spurs
+  PRE-GAME  starts in 15h 36m (2026-03-11T00:00:00.000Z)
+────────────────────────────────────────────────────────────────────────
+  POLYMARKET (CLOB)
+    Celtics                  bid=43.00%  ask=44.00%  mid=43.50%
+    Spurs                    bid=56.00%  ask=57.00%  mid=56.50%
+
+  BETFAIR EXCHANGE (back / lay / implied)
+    Boston Celtics           back=2.3  lay=2.36  implied=43.48%
+    San Antonio Spurs        back=1.74  lay=1.77  implied=57.47%
+
+  DELTA (Polymarket mid − Betfair implied)
+    Celtics                  +0.02%  (Poly: 43.50%  Betfair: 43.48%)
+    Spurs                    -0.97%  (Poly: 56.50%  Betfair: 57.47%)
+────────────────────────────────────────────────────────────────────────
